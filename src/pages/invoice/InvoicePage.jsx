@@ -627,7 +627,7 @@ useEffect(() => {
   key="poHeader"
   align="center"
   sx={{
-    visibilitiy:'hidden',
+    
     fontSize: '1px',
     letterSpacing: '-1px', 
     fontWeight: 'bold',
@@ -752,10 +752,9 @@ useEffect(() => {
             align="center"
             sx={{
               ...(idx === 1 && {
-  visibilitiy:'hidden',              
+                
   fontSize: '1px',
   letterSpacing: '-1px', // 문자를 거의 0폭으로 압축
-               
   width: 0,
   maxWidth:0,
   minWidth:0,
