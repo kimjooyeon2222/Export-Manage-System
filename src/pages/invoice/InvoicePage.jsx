@@ -168,17 +168,44 @@ export default function InvoicePage() {
   };
 
   const handleSearch = () => {
-   const allPacking = JSON.parse(localStorage.getItem("packingListData") || "[]");
+  const allPacking = JSON.parse(localStorage.getItem("packingListData") || "[]");
+  const allInvoice = JSON.parse(localStorage.getItem("invoiceData") || "[]");
 
-  // 입력된 PO번호 포함된 행 필터
-  const result = allPacking.filter((r) => r.po.includes(poNumber));
-
-  if (result.length > 0) {
-    setSearchResult(result);
-  } else {
-    setSearchResult(null);
+  if (!poNumber.trim()) {
+    alert("PO 번호를 입력하세요.");
+    return;
   }
-  };
+
+  // 🔹 입력값 정규화
+  const input = poNumber.trim().replace(/[^0-9A-Za-z]/g, "").toLowerCase();
+
+  // 🔹 PO 완전 일치 or 부분 포함 둘 다 허용
+  const matchedPacking = allPacking.filter((r) => {
+    const poValue = String(r.po || "").trim().replace(/[^0-9A-Za-z]/g, "").toLowerCase();
+    return poValue === input || poValue.includes(input);
+  });
+
+  if (matchedPacking.length === 0) {
+    alert("❌ 검색 결과가 없습니다.");
+    setSearchResult(null);
+    return;
+  }
+
+  // 🔹 invoice 데이터와 병합 (INV 기준)
+const mergedResults = matchedPacking.map((p) => {
+  const invMatch = allInvoice.find((i) => i.inv === p.inv);
+  return { ...p, ...invMatch };
+});
+
+// ✅ INV 중복 제거 (중복 INV는 1개만 표시)
+const uniqueByInv = mergedResults.filter(
+  (item, index, self) => index === self.findIndex((r) => r.inv === item.inv)
+);
+
+setSearchResult(uniqueByInv);
+};
+
+
 
   const parseDate = (str) => new Date(str);
 
@@ -234,14 +261,38 @@ useEffect(() => {
     }));
 
     // Invoice 행 업데이트
-    setRows((prev) =>
-      prev.map((row) => {
-        const match = formatted.find((f) => f.inv === row.inv);
-        return match ? { ...row, po: match.poList } : row;
-      })
-    );
-  };
+    setRows((prev) => {
+      const updated = [...prev];
 
+      formatted.forEach((f) => {
+        const existing = updated.find((r) => r.inv === f.inv);
+        if (existing) {
+          // 기존 INV 업데이트
+          existing.po = f.poList;
+        } else {
+          // ✅ 없으면 새 INV 행 추가
+          updated.push({
+            id: updated.length + 1,
+            exporter: '오토텍',
+            inv: f.inv,
+            po: f.poList,
+            amount: '$0.00',
+            item: 'TOOL',
+            cont: '-',
+            bl: '-',
+            etd: getDateOffset(0),
+            eta: getDateOffset(0),
+            delayed: getDateOffset(0),
+            count: '0일',
+            needsHelp: '-',
+            note: 'PACKING LIST 연동 자동 추가'
+          });
+        }
+      });
+
+      return updated;
+    });
+  };
   // ✅ 페이지 진입 시마다 최신 데이터 로드
   updateFromPackingList();
 }, [location.pathname]); // 🔥 경로가 바뀔 때마다 다시 실행됨
